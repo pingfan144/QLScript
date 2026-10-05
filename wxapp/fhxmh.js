@@ -1,0 +1,255 @@
+/*
+------------------------------------------
+@Author: sm
+@Date: 2026.06.09
+@Description: 飞鹤星妈会 登录/查询/签到
+cron: 20 8 * * *
+------------------------------------------
+变量名：fhxmh
+变量值：wx_server里的openid/账号标识，多账号用 & 或换行
+依赖变量：wx_server_url、wx_auth
+------------------------------------------
+*/
+
+const { Env } = require("../tools/env.js");
+const $ = new Env("飞鹤星妈会");
+const axios = require("axios");
+const WeChatServer = require("./wcs.js");
+const fs = require("fs");
+const path = require("path");
+
+// token 缓存：优先用上次登录的 token，失效再取 code 重新登录（省取码次数）
+const TOKEN_CACHE_FILE = path.join(__dirname, "fhxmh_token_cache.json");
+function readTokenCache() {
+    try {
+        if (!fs.existsSync(TOKEN_CACHE_FILE)) return {};
+        return JSON.parse(fs.readFileSync(TOKEN_CACHE_FILE, "utf8")) || {};
+    } catch (e) {
+        return {};
+    }
+}
+function writeTokenCache(cache) {
+    try {
+        fs.writeFileSync(TOKEN_CACHE_FILE, JSON.stringify(cache, null, 2), "utf8");
+    } catch (e) {
+        $.log(`写入token缓存失败: ${e.message || e}`);
+    }
+}
+
+const CK_NAME = "fhxmh";
+const APP = { name: "飞鹤星妈会", appid: "wxc83b55d61c7fc51d" };
+// 服务端业务成功码（签到成功时返回 code=000000 且 success=true）
+const OK_CODES = ["00000", "000000", "A00002"];
+const WX_SERVER_URL = (process.env.wx_server_url || "http://192.168.31.196:8787").replace(/\/$/, "");
+const WX_AUTH = process.env.wx_auth || "";
+const DEFAULT_OPENID = process.env.wx_openid || "";
+const USER_AGENT =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) MicroMessenger/3.9.12 MiniProgramEnv/Windows WindowsWechat/WMPF";
+
+function short(value, max = 220) {
+    if (value === undefined || value === null) return "";
+    const text = typeof value === "string" ? value : JSON.stringify(value);
+    return text.length > max ? `${text.slice(0, max)}...` : text;
+}
+
+function getByPath(obj, path) {
+    return String(path)
+        .split(".")
+        .reduce((cur, key) => (cur && cur[key] !== undefined ? cur[key] : undefined), obj);
+}
+
+function findFirst(obj, predicate, depth = 0) {
+    if (!obj || depth > 8) return null;
+    if (Array.isArray(obj)) {
+        for (const item of obj) {
+            const found = findFirst(item, predicate, depth + 1);
+            if (found) return found;
+        }
+        return null;
+    }
+    if (typeof obj === "object") {
+        if (predicate(obj)) return obj;
+        for (const value of Object.values(obj)) {
+            const found = findFirst(value, predicate, depth + 1);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+async function request(options) {
+    const res = await axios.request({
+        timeout: 20000,
+        validateStatus: () => true,
+        ...options,
+        headers: {
+            "User-Agent": USER_AGENT,
+            Accept: "application/json, text/plain, */*",
+            ...(options.headers || {}),
+        },
+    });
+    return { status: res.status, headers: res.headers || {}, data: res.data };
+}
+
+async function getWxCode(appid, openid) {
+    if (!WX_AUTH) throw new Error("未配置 wx_auth");
+    const wechat = new WeChatServer({ url: WX_SERVER_URL, appid, auth: WX_AUTH });
+    const { data } = await wechat.getCode(openid);
+    const code = data?.code || data?.data?.code || data?.phoneCode || data?.data?.phoneCode;
+    if (!code) throw new Error(`获取code失败: ${short(data)}`);
+    return code;
+}
+
+class FeiheMom {
+    constructor(openid) {
+        this.openid = openid;
+        this.base = "https://momclub.feihe.com/capis";
+        this.token = "";
+    }
+
+    async api({ method = "GET", path, data, allowFail = false }) {
+        const opts = {
+            method,
+            url: `${this.base}${path}`,
+            headers: {
+                Authorization: this.token,
+                locale: "zh_CN",
+                "content-type": "application/json",
+            },
+        };
+        if (method === "GET") opts.params = data || {};
+        else opts.data = data === undefined ? {} : data;
+        const res = await request(opts);
+        const ok = res.status === 200 && OK_CODES.includes(String(res.data?.code));
+        if (!ok && !allowFail) throw new Error(`HTTP ${res.status}: ${short(res.data)}`);
+        return res.data;
+    }
+
+    async login() {
+        const code = await getWxCode(APP.appid, this.openid);
+        const res = await request({
+            method: "POST",
+            url: `${this.base}/social/ma`,
+            headers: { "content-type": "application/json", locale: "zh_CN" },
+            data: code,
+            transformRequest: [(data) => data],
+        });
+        const token = res.data?.data?.tokenInfo?.accessToken || res.data?.data?.accessToken || "";
+        // 服务端会以 code:"00000"/success:true 回一个只含 tempUid、tokenInfo:null 的响应，
+        // 那是「该微信号还不是会员」的临时身份，不是登录出错——照原样抛会显示成 HTTP 200 的登录失败。
+        if (res.status === 200 && !token && res.data?.data?.tempUid) {
+            const e = new Error("NO_ACCOUNT:登录只返回临时身份(tokenInfo 为空)");
+            e.unregistered = true;
+            throw e;
+        }
+        if (res.status !== 200 || !token) throw new Error(`登录失败 HTTP ${res.status}: ${short(res.data)}`);
+        this.token = token;
+        return `token=${token.slice(0, 8)}***`;
+    }
+
+    /** 缓存参数优先：上次登录的 token 还能用就直接跑，失效再取 code 重新登录 */
+    async ensureLogin() {
+        const cached = readTokenCache()[this.openid];
+        if (!this.token && cached && cached.token) {
+            this.token = cached.token;
+            const probe = await this.api({ path: "/c/user/memberInfo", allowFail: true }).catch(() => null);
+            if (probe && (probe.data || probe.success)) {
+                $.log(`使用缓存token: ${this.token.slice(0, 8)}***`);
+                return;
+            }
+            $.log("缓存token失效，重新登录");
+            this.token = "";
+        }
+        await this.login();
+        if (this.token) {
+            const cache = readTokenCache();
+            cache[this.openid] = { token: this.token, updatedAt: new Date().toISOString() };
+            writeTokenCache(cache);
+        }
+    }
+
+    async query() {
+        const member = await this.api({ path: "/c/user/memberInfo", allowFail: true });
+        const user = await this.api({ path: "/p/user/userInfo", allowFail: true });
+        const data = member?.data || user?.data || {};
+        const score = data.score || data.points || data.integral || data.availableScore || data.totalScore;
+        const name = data.nickName || data.nickname || data.memberName || data.mobile || data.phone || "";
+        return `用户=${name || "未知"} 积分=${score ?? "未知"} member=${short(member?.data || member, 120)}`;
+    }
+
+    async sign() {
+        const todo = await this.api({
+            path: "/c/activity/todo/list",
+            data: { mockTime: Date.now() },
+            allowFail: true,
+        });
+        const checkTodo =
+            getByPath(todo, "data.checkInTodo") ||
+            findFirst(todo?.data, (item) => item && (item.checkInExtra || /签到|打卡|check/i.test(`${item.taskName || item.name || item.title || ""}`)));
+        const activityId = checkTodo?.id || checkTodo?.activityId || checkTodo?.taskId;
+        if (!activityId) return `未找到签到任务: ${short(todo)}`;
+        const todaySigned =
+            checkTodo?.todaySigned ||
+            checkTodo?.signed ||
+            checkTodo?.finish ||
+            checkTodo?.completed ||
+            checkTodo?.status === 1 ||
+            checkTodo?.state === 1;
+        if (todaySigned) return `今日已签到 activityId=${activityId}`;
+        const sign = await this.api({
+            method: "POST",
+            path: "/c/activity/todo/checkIn",
+            data: { activityId, mockTime: Date.now() },
+            allowFail: true,
+        });
+        // 成功: {"ok":true,"success":true,"code":"000000","data":{"credits":1}}
+        if (sign?.success === true || OK_CODES.includes(String(sign?.code))) {
+            const credits = sign?.data?.credits ?? sign?.data?.point ?? sign?.data?.score;
+            return `签到成功${credits === undefined ? "" : `，+${credits}积分`} activityId=${activityId}`;
+        }
+        // 任务列表的已签标记字段不全，重复签到时靠服务端文案/业务码兜底
+        // 实测重复签到返回 {"code":"A00001","msg":"今天已经签到过了"}
+        if (String(sign?.code) === "A00001" || /已签|已经签|签到过|重复|already/i.test(`${sign?.message || ""}${sign?.msg || ""}`)) {
+            return `今日已签到 activityId=${activityId}`;
+        }
+        return `签到失败: ${short(sign)}`;
+    }
+}
+
+async function runAccount(openid, index) {
+    $.log(`\n========== ${APP.name} 账号[${index}] ${openid} ==========`);
+    const runner = new FeiheMom(openid);
+    try {
+        await runner.ensureLogin().then((r) => $.log(`登录：${r || "ok"}`));
+        $.log(`查询：${await runner.query()}`);
+        $.log(`签到：${await runner.sign()}`);
+    } catch (e) {
+        const m = String(e.message || e);
+        if (m.startsWith("NO_ACCOUNT")) {
+            $.log(`⚠️ 该微信号还没在飞鹤星妈会注册会员（${m.replace(/^NO_ACCOUNT:/, "")}），先在小程序里登录注册一次再跑`);
+            return;
+        }
+        $.log(`执行失败：${m}`);
+    }
+}
+
+(async () => {
+    const accounts = (process.env[CK_NAME] || DEFAULT_OPENID || "")
+        .split((process.env[CK_NAME] || "").includes("\n") ? "\n" : "&")
+        .map((x) => x.trim())
+        .filter(Boolean);
+    if (!accounts.length) {
+        $.log(`未配置 ${CK_NAME}`);
+        await $.done();
+        return;
+    }
+    $.log(`共找到${accounts.length}个账号`);
+    for (let i = 0; i < accounts.length; i++) {
+        await runAccount(accounts[i], i + 1);
+        await $.wait(800);
+    }
+    await $.done();
+})().catch(async (e) => {
+    $.log(`脚本异常：${e.stack || e.message || e}`);
+    await $.done();
+});

@@ -338,18 +338,11 @@ class Task {
         const ref = String(this.account.openid).split('#')[0].trim();
         // 1) wx.login code
         const code = await this.getCode();
-        // 2) encryptedData + iv（先尝试 operateWxData，退化为手机号加密数据）
-        let wxData = await this.getOperateData();
-        let edata = wxData?.encryptedData || wxData?.encrypted_data || wxData?.data?.encryptedData || wxData?.Data?.encryptedData || "";
-        let iv = wxData?.iv || wxData?.IV || wxData?.data?.iv || wxData?.Data?.iv || "";
-        if (!edata || !iv) {
-            const phone = await getSinglePhoneEncrypted(MINI_APP_ID, ref);
-            if (phone) {
-                edata = edata || phone.encryptedData || phone.encrypted_data || "";
-                iv = iv || phone.iv || phone.IV || "";
-            }
-        }
-        if (!edata || !iv) throw new Error(`未提取到 encryptedData/iv: ${short(wxData)}`);
+        // 2) 拾绿 wechatLogin 需要手机号加密数据（encryptedData/iv 来自 getPhoneNumber，不是用户资料）
+        const phone = await getSinglePhoneEncrypted(MINI_APP_ID, ref);
+        const edata = phone?.encryptedData || phone?.encrypted_data || "";
+        const iv = phone?.iv || phone?.IV || "";
+        if (!edata || !iv) throw new Error(`未提取到手机号 encryptedData/iv: ${short(phone)}`);
         // 3) 调登录接口
         const res = await this.request("/app/login/wechatLogin", {
             params: { encryptedData: edata, iv, code },

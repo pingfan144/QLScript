@@ -172,42 +172,29 @@ def follow_acrj(session: requests.Session, payload: Dict[str, Any]) -> str:
 
 def get_yyb_user_info(server: str, ref: str) -> Dict[str, str]:
     response = requests.post(
-        f"{server}/wxapp/operateWxData",
-        json={
-            "ref": ref,
-            "app_id": JD_LOGIN_APP_ID,
-            "payload": {"api_name": "getUserInfo", "data": {"withCredentials": True}, "env": 1},
-        },
+        f"{WX_SERVER_URL}/wx/getuserinfo",
+        json={"appid": JD_LOGIN_APP_ID, "openid": ref},
+        headers={"auth": WX_AUTH, "Content-Type": "application/json"},
         timeout=TIMEOUT,
     )
     response.raise_for_status()
-    result = yyb_result(response.json())
-    raw_data = result.get("rawData") or result.get("raw_data") or result.get("data")
+    payload = response.json()
+    result = (payload.get("data") or {}) if isinstance(payload, dict) else {}
+    raw_data = result.get("data") or ""
     if isinstance(raw_data, (dict, list)):
         raw_data = json.dumps(raw_data, ensure_ascii=False, separators=(",", ":"))
-    user_info = result.get("userInfo") or result.get("user_info")
-    if not raw_data and isinstance(user_info, dict):
-        raw_data = json.dumps(user_info, ensure_ascii=False, separators=(",", ":"))
-    if not raw_data:
-        direct_info = {
-            key: result[key]
-            for key in ("nickName", "gender", "language", "city", "province", "country", "avatarUrl")
-            if key in result and result[key] is not None
-        }
-        if direct_info:
-            raw_data = json.dumps(direct_info, ensure_ascii=False, separators=(",", ":"))
     encrypted = result.get("encryptedData") or result.get("encrytData") or result.get("encrypted_data")
     info = {
         "rawData": str(raw_data or ""),
         "signature": str(result.get("signature") or ""),
         "encryptedData": str(encrypted or ""),
         "iv": str(result.get("iv") or ""),
-        "openid": str(result.get("openid") or ""),
+        "openid": str(ref or ""),
     }
     missing = [key for key in ("rawData", "signature", "encryptedData", "iv") if not info[key]]
     if missing:
         keys = ",".join(sorted(str(key) for key in result.keys()))
-        raise RuntimeError("YYB-Go getUserInfo 缺少字段：" + ",".join(missing) + f"；返回字段={keys}")
+        raise RuntimeError("smallcat getUserInfo 缺少字段：" + ",".join(missing) + f"；返回字段={keys}")
     return info
 
 

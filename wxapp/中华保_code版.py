@@ -330,23 +330,23 @@ def yyb_get_wx_code(account: AccountTarget) -> str:
 
 def yyb_get_phone_package(account: AccountTarget) -> Dict[str, str]:
     """取手机号授权加密包（仅在账号尚未绑定手机号时使用）。"""
-    body = yyb_post(account, "/wxapp/getPhoneNumber", {"ref": account.ref, "app_id": APP_NO})
-    result = (body.get("data") or {}).get("result")
-    if isinstance(result, dict) and isinstance(result.get("data"), str):
-        try:
-            inner = json.loads(result["data"])
-            if isinstance(inner, dict) and inner.get("encryptedData"):
-                result = inner
-        except Exception:
-            pass
-    node = result if isinstance(result, dict) else {}
-    enc = node.get("encryptedData") or deep_first(body, "encryptedData") or ""
-    iv = node.get("iv") or deep_first(body, "iv") or ""
+    resp = requests.post(
+        WX_SERVER_URL + "/wx/getphonenumber",
+        headers={"auth": WX_AUTH, "Content-Type": "application/json"},
+        json={"appid": APP_NO, "openid": account.ref},
+        timeout=YYB_TIMEOUT,
+    )
+    resp.raise_for_status()
+    body = resp.json()
+    node = (body.get("data") or {}) if isinstance(body, dict) else {}
+    raw = node.get("raw") or {}
+    enc = raw.get("encryptedData") or deep_first(body, "encryptedData") or ""
+    iv = raw.get("iv") or deep_first(body, "iv") or ""
     if not enc or not iv:
-        raise RuntimeError(f"YYB 未返回手机号加密包：{preview(body, 260)}")
-    return {"encrypted_data": str(enc), "iv": str(iv), "code": str(node.get("code") or ""),
-            "mobile": str((json.loads(node["data"]).get("mobile")
-                           if isinstance(node.get("data"), str) and node["data"].startswith("{")
+        raise RuntimeError(f"smallcat 未返回手机号加密包：{preview(body, 260)}")
+    return {"encrypted_data": str(enc), "iv": str(iv), "code": str(node.get("code") or raw.get("code") or ""),
+            "mobile": str((json.loads(raw["data"]).get("mobile")
+                           if isinstance(raw.get("data"), str) and raw["data"].startswith("{")
                            else "") or "")}
 
 

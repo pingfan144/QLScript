@@ -212,6 +212,42 @@ class HRT:
             raise RuntimeError("smallcat getCode 未返回有效微信 code")
         return code
 
+    def smallcat_user_info(self) -> Dict[str, str]:
+        response = self.session.post(
+            WX_SERVER_URL + "/wx/getuserinfo",
+            headers={"auth": WX_AUTH, "Content-Type": "application/json"},
+            json={"appid": APP_ID, "openid": self.account.ref},
+            timeout=TIMEOUT,
+        )
+        response.raise_for_status()
+        body = response.json()
+        d = (body.get("data") or {}) if isinstance(body, dict) else {}
+        raw = d.get("data") or ""
+        if isinstance(raw, (dict, list)):
+            raw = json.dumps(raw, ensure_ascii=False, separators=(",", ":"))
+        return {
+            "rawData": str(raw),
+            "signature": str(d.get("signature") or ""),
+            "encryptedData": str(d.get("encryptedData") or ""),
+            "iv": str(d.get("iv") or ""),
+            "cloudID": str(d.get("cloud_id") or ""),
+        }
+
+    def smallcat_phone_code(self) -> str:
+        response = self.session.post(
+            WX_SERVER_URL + "/wx/getphonenumber",
+            headers={"auth": WX_AUTH, "Content-Type": "application/json"},
+            json={"appid": APP_ID, "openid": self.account.ref},
+            timeout=TIMEOUT,
+        )
+        response.raise_for_status()
+        body = response.json()
+        data = (body.get("data") or {}) if isinstance(body, dict) else {}
+        code = data.get("code") or (data.get("raw") or {}).get("code")
+        if not isinstance(code, str) or not code.strip():
+            raise RuntimeError("smallcat getPhoneNumber 未返回有效微信手机号授权 code")
+        return str(code)
+
     def encrypted_post(self, path: str, payload: Dict[str, Any], *, mini: bool = False) -> Dict[str, Any]:
         auth_id, secret, public_key = (
             (MINI_AUTH, MINI_SECRET, MINI_PUBLIC_KEY)
@@ -265,18 +301,7 @@ class HRT:
             return False
 
     def get_user_info(self) -> Dict[str, str]:
-        result = self.yyb(
-            "/wxapp/operateWxData",
-            {"payload": {"api_name": "getUserInfo", "data": {"withCredentials": True}, "env": 1}},
-        )
-        raw = result.get("rawData") or result.get("raw_data") or result.get("data") or ""
-        return {
-            "rawData": str(raw),
-            "signature": str(nested(result, "signature") or ""),
-            "encryptedData": str(nested(result, "encryptedData", "encrytData", "encrypted_data") or ""),
-            "iv": str(nested(result, "iv") or ""),
-            "cloudID": str(nested(result, "cloudID", "cloudId", "cloud_id") or ""),
-        }
+        return self.smallcat_user_info()
 
     def yyb_login(self) -> str:
         # HAR 中的真实登录是两段式：自动登录检查返回 token 或 randomCode；
@@ -309,10 +334,7 @@ class HRT:
         if not random_code:
             raise RuntimeError("自动登录检查既未返回 token，也未返回 randomCode")
 
-        phone = self.yyb("/wxapp/getPhoneNumber")
-        phone_code = str(nested(phone, "code") or "")
-        if not phone_code:
-            raise RuntimeError("YYB getPhoneNumber 未返回有效微信手机号授权 code")
+        phone_code = self.smallcat_phone_code()
         login_payload = {
             "code": phone_code,
             "randomCode": random_code,

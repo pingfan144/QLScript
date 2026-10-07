@@ -130,8 +130,20 @@ class _YybCompat:
 
     @staticmethod
     def get_single_phone_code(app_id, identifier, login_type=None):
-        result = _yyb_call("/wxapp/getPhoneNumber", app_id, identifier)
-        return str(result if isinstance(result, str) else result.get("code") or "")
+        import requests as _requests
+        response = _requests.post(
+            WX_SERVER_URL + "/wx/getphonenumber",
+            headers={"auth": WX_AUTH, "Content-Type": "application/json"},
+            json={"appid": app_id, "openid": _yyb_clean_ref(identifier)},
+            timeout=30,
+        )
+        response.raise_for_status()
+        body = response.json()
+        data = (body.get("data") or {}) if isinstance(body, dict) else {}
+        code = data.get("code") or (data.get("raw") or {}).get("code")
+        if not code:
+            raise RuntimeError("smallcat /wx/getphonenumber 未返回 code")
+        return str(code)
 
     @staticmethod
     def normalize_login_type(value):

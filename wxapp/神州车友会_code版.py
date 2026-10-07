@@ -324,29 +324,27 @@ def yyb_get_phone_package(account: AccountTarget) -> Dict[str, str]:
     返回 encryptedData / iv，另附 code、cloud_id、mobile 备用。
     注意：必须与本次 wx.login 用同一个 ref，session_key 才对得上。
     """
-    body = yyb_post(account, "/wxapp/getPhoneNumber", {"ref": account.ref, "app_id": APP_NO})
-    result = (body.get("data") or {}).get("result")
-    if isinstance(result, dict) and isinstance(result.get("data"), str):
-        # 有的版本把真正结果再套一层 JSON 字符串
-        try:
-            inner = json.loads(result["data"])
-            if isinstance(inner, dict) and (inner.get("encryptedData") or inner.get("encrypted_data")):
-                result = inner
-        except Exception:
-            pass
-
-    node: Any = result if isinstance(result, dict) else {}
-    enc = node.get("encryptedData") or node.get("encrypted_data") or ""
-    iv = node.get("iv") or node.get("IV") or ""
+    resp = requests.post(
+        WX_SERVER_URL + "/wx/getphonenumber",
+        headers={"auth": WX_AUTH, "Content-Type": "application/json"},
+        json={"appid": APP_NO, "openid": account.ref},
+        timeout=YYB_TIMEOUT,
+    )
+    resp.raise_for_status()
+    body = resp.json()
+    node: Any = (body.get("data") or {}) if isinstance(body, dict) else {}
+    raw = node.get("raw") or {}
+    enc = raw.get("encryptedData") or raw.get("encrypted_data") or ""
+    iv = raw.get("iv") or raw.get("IV") or ""
     if not enc or not iv:
         # 兜底：整棵树上找
         enc = enc or (first_str(body, "encryptedData") or "")
         iv = iv or (first_str(body, "iv") or "")
     if not enc or not iv:
-        raise RuntimeError(f"YYB 未返回手机号加密包：{preview(body, 260)}")
+        raise RuntimeError(f"smallcat 未返回手机号加密包：{preview(body, 260)}")
 
     mobile = ""
-    raw_data = node.get("data")
+    raw_data = raw.get("data")
     if isinstance(raw_data, str) and raw_data.startswith("{"):
         try:
             mobile = json.loads(raw_data).get("mobile", "") or ""
@@ -356,8 +354,8 @@ def yyb_get_phone_package(account: AccountTarget) -> Dict[str, str]:
     return {
         "encrypted_data": str(enc),
         "iv": str(iv),
-        "code": str(node.get("code") or ""),
-        "cloud_id": str(node.get("cloud_id") or ""),
+        "code": str(node.get("code") or raw.get("code") or ""),
+        "cloud_id": str(raw.get("cloud_id") or ""),
         "mobile": str(mobile),
     }
 
@@ -716,7 +714,7 @@ GUARD_HINTS = {
     "sign error": "签名校验失败：Crypto 与 encryptKey/iv/version + TS 不匹配",
     "ts timeout": "时间戳超出服务端窗口（检查机器时间/时区）",
     "NoLogin": "会话未登录",
-    "NoPhone": "会话未绑定手机号 —— 自动绑定失败，检查 YYB /wxapp/getPhoneNumber 是否可用",
+    "NoPhone": "会话未绑定手机号 —— 自动绑定失败，检查 smallcat /wx/getphonenumber 是否可用",
 }
 
 

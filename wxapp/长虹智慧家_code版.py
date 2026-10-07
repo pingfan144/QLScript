@@ -108,6 +108,10 @@ class Changhong:
             if not isinstance(code, str) or not code.strip():
                 raise TaskError("smallcat 取码失败，请检查 openid 是否已在面板授权")
             return {"code": code}
+        if endpoint == "getPhoneNumber":
+            return self.smallcat_phone_package()
+        if endpoint == "operateWxData":
+            return self.smallcat_user_info()
         body = request(self.yyb, "POST", self.server + "/wxapp/" + endpoint,
                        "YYB " + endpoint,
                        json={"ref": self.ref, "app_id": APP_ID, **extra})
@@ -115,6 +119,34 @@ class Changhong:
         if body.get("code") != 0 or not isinstance(result, dict):
             raise TaskError(f"YYB {endpoint}失败，请检查账号授权及YYB日志")
         return result
+
+    def smallcat_user_info(self):
+        resp = self.yyb.post(
+            WX_SERVER_URL + "/wx/getuserinfo",
+            headers={"auth": WX_AUTH, "Content-Type": "application/json"},
+            json={"appid": APP_ID, "openid": self.ref},
+            timeout=30,
+        )
+        body = resp.json() if resp.status_code == 200 else {}
+        d = body.get("data") if isinstance(body, dict) else {}
+        raw = d.get("data") or ""
+        if isinstance(raw, dict):
+            raw = json.dumps(raw, ensure_ascii=False)
+        return {"rawData": raw, "iv": d.get("iv") or "", "encryptedData": d.get("encryptedData") or ""}
+
+    def smallcat_phone_package(self):
+        resp = self.yyb.post(
+            WX_SERVER_URL + "/wx/getphonenumber",
+            headers={"auth": WX_AUTH, "Content-Type": "application/json"},
+            json={"appid": APP_ID, "openid": self.ref},
+            timeout=30,
+        )
+        body = resp.json() if resp.status_code == 200 else {}
+        d = body.get("data") if isinstance(body, dict) else {}
+        raw = d.get("raw") or {}
+        return {"code": d.get("code") or raw.get("code") or "",
+                "encryptedData": raw.get("encryptedData") or "",
+                "iv": raw.get("iv") or ""}
 
     def api(self, method, path, **kwargs):
         body = request(self.web, method, BASE + path, path, **kwargs)

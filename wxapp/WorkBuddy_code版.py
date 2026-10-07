@@ -539,6 +539,8 @@ class Client:
     def yyb_code(self, route, extra=None):
         if route == "/wxapp/getCode":
             return self.smallcat_code()
+        if route == "/wxapp/getPhoneNumber":
+            return self.smallcat_phone_code()
         payload = {"ref": self.account.ref, "app_id": APP_ID}
         if extra:
             payload.update(extra)
@@ -547,6 +549,27 @@ class Client:
         code = result.get("code") if isinstance(result, dict) else None
         if not reply.ok or not isinstance(code, str) or len(code) < 8:
             raise reply.error("YYB授权")
+        return code
+
+    def smallcat_phone_code(self):
+        """smallcat /wx/getphonenumber 取手机号授权 code。"""
+        try:
+            response = self.session.post(
+                WX_SERVER_URL + "/wx/getphonenumber",
+                headers={"auth": WX_AUTH, "Content-Type": "application/json"},
+                json={"appid": APP_ID, "openid": self.account.ref},
+                timeout=30,
+            )
+        except requests.RequestException:
+            raise SafeError("smallcat 取手机号网络请求失败") from None
+        try:
+            body = response.json() if response.status_code == 200 else {}
+        except ValueError:
+            body = {}
+        data = body.get("data") if isinstance(body, dict) else {}
+        code = data.get("code") or (data.get("raw") or {}).get("code")
+        if not isinstance(code, str) or not code.strip():
+            raise SafeError("smallcat 取手机号失败，请检查 openid 是否已授权手机号")
         return code
 
     def smallcat_code(self):

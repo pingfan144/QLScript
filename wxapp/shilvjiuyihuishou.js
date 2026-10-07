@@ -1,8 +1,8 @@
-// smallcat 适配说明：配置多行 YYB_SERVER=地址@openid；openid 用于 smallcat 取码，服务地址用于手机号 YYB 兜底；通知使用青龙 sendNotify。
-// 适配：由 YYB-Go-Enhanced 取码迁移至 smallcat /wx/code
-// ===== smallcat + YYB(手机号兜底) + QingLong standalone adapter =====
+// smallcat 适配说明：配置多行 YYB_SERVER=地址@openid；@ 后 openid 用于 smallcat 取码/取手机号/取资料，@ 前服务地址仅作兼容占位；通知使用青龙 sendNotify。
+// 适配：由 YYB-Go-Enhanced 取码迁移至 smallcat（/wx/code、/wx/getphonenumber、/wx/getuserinfo）
+// ===== smallcat + QingLong standalone adapter =====
 
-// smallcat 取码配置（getCode 走 smallcat；手机号 getPhoneNumber 仍走 YYB 兜底）
+// smallcat 取码配置（getCode 走 /wx/code；手机号走 /wx/getphonenumber；用户资料走 /wx/getuserinfo，均为 smallcat 原生接口）
 const WX_SERVER_URL = String(process.env.wx_server_url || "http://49.232.164.167:8787").replace(/\/+$/, "");
 const WX_AUTH = process.env.wx_auth || "";
 function _yybRoutes() {
@@ -48,24 +48,42 @@ async function getSingleCode(appId, identifier) {
     return code;
 }
 
-async function _yybResult(path, appId, identifier) {
-    const route = _yybRouteFor(identifier);
-    const response = await axios.post(`${route.server}${path}`,
-        { ref: route.ref, app_id: appId },
-        { timeout: 30000, headers: { 'Content-Type': 'application/json' } });
-    const body = response.data;
-    if (!body || Number(body.code) !== 0) {
-        throw new Error(`${path} 返回失败：${body?.msg || body?.message || JSON.stringify(body)}`);
-    }
-    return body.data?.result ?? body.data ?? null;
-}
-
 async function getSingleOperateWxData(appId, identifier) {
-    return { code: await getSingleCode(appId, identifier), encryptedData: null, iv: null };
+    const route = _yybRouteFor(identifier);
+    const openid = _yybCleanRef(route.ref);
+    const response = await axios.post(`${WX_SERVER_URL}/wx/getuserinfo`,
+        { appid: appId, openid },
+        { timeout: 30000, headers: { auth: WX_AUTH, 'Content-Type': 'application/json' } });
+    const body = response.data;
+    const node = body?.data ?? body ?? {};
+    const raw = node.data ?? node.rawData ?? "";
+    return {
+        code: node.code ?? "",
+        rawData: typeof raw === "string" ? raw : JSON.stringify(raw ?? {}),
+        signature: node.signature ?? "",
+        encryptedData: node.encryptedData ?? node.encrypted_data ?? "",
+        iv: node.iv ?? node.IV ?? "",
+        cloudID: node.cloud_id ?? node.cloudID ?? "",
+    };
 }
 
 async function getSinglePhoneEncrypted(appId, identifier) {
-    return await _yybResult('/wxapp/getPhoneNumber', appId, identifier);
+    const route = _yybRouteFor(identifier);
+    const openid = _yybCleanRef(route.ref);
+    const response = await axios.post(`${WX_SERVER_URL}/wx/getphonenumber`,
+        { appid: appId, openid },
+        { timeout: 30000, headers: { auth: WX_AUTH, 'Content-Type': 'application/json' } });
+    const body = response.data;
+    const node = body?.data ?? body ?? {};
+    const raw = node.raw ?? {};
+    const plain = raw.data ?? "";
+    return {
+        code: node.code ?? raw.code ?? "",
+        encryptedData: raw.encryptedData ?? raw.encrypted_data ?? "",
+        iv: raw.iv ?? raw.IV ?? "",
+        cloud_id: raw.cloud_id ?? raw.cloudID ?? "",
+        mobile: typeof plain === "string" ? plain : JSON.stringify(plain ?? {}),
+    };
 }
 
 async function _resolveYybAccounts(envName = '') {

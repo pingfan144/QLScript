@@ -60,7 +60,7 @@ APP_NAME = "神州车友会签到"
 APP_NO = "wx645266d7bda741c9"          # 小程序 AppID
 BASE_URL = "https://cgi.qswnet.com"    # 小程序接口域名
 
-# smallcat 取码配置（getCode 走 smallcat；手机号/资料仍走 YYB 兜底）
+# smallcat 取码配置（取码 / 手机号 / 签名密钥均走 smallcat 原生接口）
 WX_SERVER_URL = os.getenv("wx_server_url", "http://49.232.164.167:8787").rstrip("/")
 WX_AUTH = os.getenv("wx_auth", "")
 BIZ_APP_ID = 1006                      # 业务侧 APP_ID（登录必填）
@@ -282,40 +282,64 @@ def yyb_get_wx_code(account: AccountTarget) -> str:
 
 
 def yyb_get_crypto_key(account: AccountTarget) -> Dict[str, Any]:
-    """取用户加密密钥（wx.getUserCryptoManager().getLatestUserKey 的协议实现）。"""
-    payload = {
-        "ref": account.ref,
-        "app_id": APP_NO,
-        "payload": {
-            "api_name": "webapi_getuserencryptkey",
-            "data": {"appid": APP_NO},
-        },
-    }
-    body = yyb_post(account, "/wx/getlatestuserkey", payload)
-    node: Any = (body.get("data") or {}).get("result")
-    if isinstance(node, dict) and isinstance(node.get("data"), str):
+    """取用户加密密钥（wx.getUserCryptoManager().getLatestUserKey，smallcat /wx/encryptkey）。
+
+    smallcat 返回 data.encrypt_key / iv / version（平铺），与 YYB 旧接口
+    /wx/getlatestuserkey 的 data.result.data 结构不同。
+
+    若 autoauth 材料尚未就绪（kTdiKeyAutoauthEncKey 无效），先走一次 /wx/code
+    触发 smallcat 的 js-login 静默续期，再重试，避免首次运行撞上空会话而假失败。
+    """
+    last_err = ""
+    for attempt in range(1, 4):
         try:
-            node = json.loads(node["data"])
-        except Exception:
-            pass
-    elif isinstance(node, dict) and isinstance(node.get("data"), dict):
-        node = node["data"]
+            resp = requests.post(
+                WX_SERVER_URL + "/wx/encryptkey",
+                headers={"auth": WX_AUTH, "Content-Type": "application/json"},
+                json={"appid": APP_NO, "openid": account.ref},
+                timeout=YYB_TIMEOUT,
+            )
+            resp.raise_for_status()
+            body = resp.json()
+            node: Any = (body.get("data") or {}) if isinstance(body, dict) else {}
+            if not isinstance(node, dict):
+                raise RuntimeError(f"密钥返回结构异常：{preview(body, 300)}")
 
-    if not isinstance(node, dict):
-        raise RuntimeError(f"密钥返回结构异常：{preview(body, 300)}")
+            key = node.get("encrypt_key") or node.get("encryptKey") or ""
+            iv = node.get("iv") or ""
+            version = node.get("version")
+            if key and iv and version not in (None, ""):
+                return {
+                    "encrypt_key": str(key),
+                    "iv": str(iv),
+                    "version": str(version),
+                    "expire_in": node.get("expire_in") or node.get("expireIn") or 0,
+                    "create_time": node.get("create_time") or 0,
+                }
 
-    key = node.get("encrypt_key") or node.get("encryptKey") or ""
-    iv = node.get("iv") or ""
-    version = node.get("version")
-    if not key or not iv or version in (None, ""):
-        raise RuntimeError(f"密钥字段缺失（可能是该账号/小程序不支持）：{preview(node, 260)}")
-    return {
-        "encrypt_key": str(key),
-        "iv": str(iv),
-        "version": str(version),
-        "expire_in": node.get("expire_in") or node.get("expireIn") or 0,
-        "create_time": node.get("create_time") or 0,
-    }
+            err = str(node.get("error") or node.get("message") or "")
+            if any(k in err for k in ("AutoauthEncKey", "operatewx", "Req2Buf", "valid AES")):
+                # autoauth 材料未就绪：借 /wx/code 触发静默续期后重试
+                try:
+                    requests.post(
+                        WX_SERVER_URL + "/wx/code",
+                        headers={"auth": WX_AUTH, "Content-Type": "application/json"},
+                        json={"appid": APP_NO, "openid": account.ref},
+                        timeout=YYB_TIMEOUT,
+                    )
+                except Exception:
+                    pass
+                last_err = err or preview(node, 200)
+                sleep(2 + attempt)
+                continue
+
+            raise RuntimeError(f"密钥字段缺失（可能是该账号/小程序不支持）：{preview(node, 260)}")
+        except requests.RequestException as exc:
+            last_err = str(exc)
+            sleep(2)
+            continue
+
+    raise RuntimeError(f"密钥获取失败：{last_err or '多次重试仍无 encrypt_key'}")
 
 
 def yyb_get_phone_package(account: AccountTarget) -> Dict[str, str]:
@@ -921,7 +945,7 @@ def main() -> int:
         f"🔐 登录    : smallcat 自动取码 → user/wechatminiprogram/login（无需抓包）",
         f"📱 手机号  : " + ("YYB 加密包 → user/login 自动绑定（拿到 User_ID）"
                             if BIND_PHONE else "已关闭自动绑定（QSW_BIND_PHONE=0）"),
-        f"✍️ 签名    : MD5(encryptKey + iv + version + TS)，密钥由 YYB 转发微信协议获取",
+        f"✍️ 签名    : MD5(encryptKey + iv + version + TS)，密钥由 smallcat /wx/encryptkey 获取",
         f"🎭 请求头  : " + (f"随机（UA {len(UA_POOL)} 套 / Referer {REFERER_VER_RANGE[0]}-{REFERER_VER_RANGE[1]}）"
                            if RANDOM_HEADERS else "固定"),
     ])

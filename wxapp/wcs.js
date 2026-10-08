@@ -24,22 +24,37 @@ class WeChatCodeServer {
         }
     }
 
-    getCode(openid) {
+    async getCode(openid) {
         if (this.yybMode) return this.yybGetCode(openid);
-        console.log('等待获取code:');
-        return new Promise((resolve, reject) => {
-            axios.post(this.serverUrl + '/wx/code', { appid: this.appid, openid }, {
-                headers: {
-                    'auth': this.auth
-                },
-                timeout: 30 * 1000
-            }).then(res => {
-                console.log('获取code成功:');
-                resolve(res);
-            }).catch(err => {
-                reject(err);
-            });
-        });
+        let lastRes = null;
+        // smallcat 的 js-login 偶发「session 未就绪」导致 code 拿不到（如 js-login code was not returned），
+        // 这里先触发一次 /wx/refresh 续期再重试，最多 3 次，避免首跑撞上空会话直接失败。
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            console.log('等待获取code:' + (attempt > 1 ? `（第${attempt}次重试）` : ''));
+            try {
+                const res = await axios.post(this.serverUrl + '/wx/code', { appid: this.appid, openid }, {
+                    headers: {
+                        'auth': this.auth
+                    },
+                    timeout: 30 * 1000
+                });
+                lastRes = res;
+                const d = res.data || {};
+                const code = (d.data && d.data.code) || d.code || (d.data && d.data.data && d.data.data.code);
+                if (code) {
+                    console.log('获取code成功:');
+                    return res;
+                }
+                console.log('获取code未返回有效值，触发续期后重试: ' + JSON.stringify(d).slice(0, 160));
+                await this.refreshAccount(openid).catch(() => {});
+            } catch (err) {
+                console.log('获取code异常: ' + (err.message || err));
+            }
+            if (attempt < 3) await new Promise((r) => setTimeout(r, 2000 + attempt * 1000));
+        }
+        // 向后兼容：仍返回最后一次响应（保持原「resolve 整个 res」语义），由调用方判断 code 是否存在
+        if (lastRes) return lastRes;
+        throw new Error('获取code失败：多次重试无响应');
     }
 
     /* ────────── YYB 面板后端 ──────────

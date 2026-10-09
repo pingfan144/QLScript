@@ -1,6 +1,5 @@
 node_modules/
 package*.json
-.gitignore
 .codex
 .czrc
 Tools/
@@ -8,3 +7,20 @@ wxapp/*_token_cache.json
 daily/*_token_cache.json
 __pycache__/
 *.pyc
+
+# ===== 本地调试/同步工具（含账号密码/openid/auth，禁止提交到公开仓库）=====
+check_log.py
+check_syntax.py
+diag_accounts.py
+extract_js.py
+locate_szcyh*.py
+probe_*.py
+read_sessions.py
+run_verify_*.py
+sc_index.js
+server_test_*.py
+sync_*.py
+test_szcyh_flow.py
+适配规范.md
+wxapp/_*.py
+wxapp/outputs/

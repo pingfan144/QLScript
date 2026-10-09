@@ -55,7 +55,7 @@
  *   环境变量：
  *     PAID_OPENIDS 必填，逗号分隔的微信 openid 列表
  *     wx_server_url smallcat 取码面板地址，默认 http://49.232.164.167:8787
- *     wx_auth       smallcat 面板 auth 头，默认 
+ *     wx_auth       smallcat 面板 auth 头，默认留空（需在青龙配 wx_auth）
  *     PAID_NOTIFY  可选，默认 1；设为 0 时关闭青龙 notify.py 汇总通知
  *     PAID_ACCOUNT_DELAY 可选，账号间固定等待秒数；默认随机 10-18 秒，测试可设为 0
  *   登录链路优先级（命中即跳过后续）：

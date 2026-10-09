@@ -20,7 +20,7 @@
 
 依赖环境变量（青龙面板内配置）：
   wx_server_url    smallcat wx_server 地址   默认 http://49.232.164.167:8787
-  wx_auth          smallcat auth 值         默认 
+  wx_auth          smallcat auth 值         默认留空（需在青龙配 wx_auth）
   hsy_openid       回收猿 openid，多个用 & 或 , 或换行分隔
   hsy_cache_file   缓存文件路径（可选）
 """

@@ -8,7 +8,7 @@ cron: 17 8 * * *
   YYB_SERVER  服务地址@openid，多账号每行一条；@ 后 openid 用于 smallcat 取码，@ 前服务地址用于手机号/资料 YYB 兜底
               例：yyb-go:8000@openid
   wx_server_url  smallcat 取码面板地址，默认 http://49.232.164.167:8787
-  wx_auth        smallcat 面板 auth 头，默认 
+  wx_auth        smallcat 面板 auth 头，默认留空（需在青龙配 wx_auth）
   JDEXPRESS_NOTIFY  1 推送（默认），0 关闭推送
   JDEXPRESS_ACCOUNT_LIMIT  可选，仅运行前 N 个账号（用于测试）
   JDEXPRESS_REF_FILTER  可选，仅运行指定账号标识（用于测试）

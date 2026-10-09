@@ -8,7 +8,7 @@ Date: 2026-09-02
 YYB_SERVER：服务地址@openid，每行一条；@ 后 openid 用于 smallcat 取码，@ 前服务地址用于手机号 YYB 兜底
 账号自动从 yyb_go 拉取全部存活账号；WX_ID（或 lpzl_tpylyb）仅作为可选白名单过滤，留空即用全部
 wx_server_url：smallcat 取码面板地址，默认 http://49.232.164.167:8787
-wx_auth：smallcat 面板 auth 头，默认 
+wx_auth：smallcat 面板 auth 头，默认留空（需在青龙配 wx_auth）
 cron: 28 6,19 * * *
 version: 2.3
 适配：由 YYB-Go-Enhanced 取码迁移至 smallcat /wx/code

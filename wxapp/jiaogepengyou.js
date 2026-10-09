@@ -7,7 +7,7 @@
  * 环境变量：
  * - JGPY_OPENIDS  必填；账号 openid 列表，逗号分隔
  * - wx_server_url smallcat 取码面板地址，默认 http://49.232.164.167:8787
- * - wx_auth       smallcat 面板 auth 头，默认 
+ * - wx_auth       smallcat 面板 auth 头，默认留空（需在青龙配 wx_auth）
  * - JGPY_NOTIFY   可选；默认1，设为0关闭青龙通知
  *
  * 业务接口：smp-api.iyouke.com/dtapi

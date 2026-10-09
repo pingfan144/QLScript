@@ -4,7 +4,7 @@
 
 // smallcat 取码配置（getCode 走 /wx/code；手机号走 /wx/getphonenumber；用户资料走 /wx/getuserinfo，均为 smallcat 原生接口）
 const WX_SERVER_URL = String(process.env.wx_server_url || "http://49.232.164.167:8787").replace(/\/+$/, "");
-const WX_AUTH = process.env.wx_auth || "";
+const WX_AUTH = process.env.wx_auth || '';
 function _yybRoutes() {
     const routes = String(process.env.YYB_SERVER || '').split(/\r?\n/)
         .map(v => v.trim()).filter(Boolean).map((line, index) => {

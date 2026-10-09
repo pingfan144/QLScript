@@ -27,7 +27,7 @@
   python 回收蛙_签到脚本.py --selftest   # 本地签名构造自检（不联网）
 环境变量：
   wx_server_url  smallcat 服务地址（默认 http://49.232.164.167:8787）
-  wx_auth        smallcat AUTH（默认 ）
+  wx_auth        smallcat AUTH默认留空（需在青龙配 wx_auth）
   hsw_openid     smallcat 账号 openid，多个用 & 分隔（默认内置 3 个）
   HSW_CACHE_FILE 缓存文件路径（默认与脚本同目录 hsw_cache.json）
 """

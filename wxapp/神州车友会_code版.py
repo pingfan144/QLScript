@@ -12,7 +12,7 @@ cron: 18 9 * * *
   YYB_SERVER          必填，服务地址@openid，多账号每行一条；@ 后 openid 用于 smallcat 取码，@ 前服务地址用于手机号/资料 YYB 兜底
                       例：yyb-go:8000@openid
   wx_server_url       smallcat 取码面板地址，默认 http://49.232.164.167:8787
-  wx_auth             smallcat 面板 auth 头，默认 
+  wx_auth             smallcat 面板 auth 头，默认留空（需在青龙配 wx_auth）
   YYB_API_KEY         可选，对应 YYB_PROTOCOL_TOKEN，设置后带 Authorization 头
   QSW_DRY_RUN         可选，=1 只查询不签到（建议首次这样试）
   QSW_BIND_PHONE      可选，默认 1；=0 关闭手机号自动绑定（仅适合已绑定的账号）

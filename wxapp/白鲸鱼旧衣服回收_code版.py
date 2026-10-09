@@ -29,7 +29,7 @@
   YYB_SERVER        服务地址@openid，每行一条；@ 后 openid 用于 smallcat 取码，@ 前服务地址用于手机号/资料 YYB 兜底
   账号直接来自 YYB_SERVER；无需配置 WX_ID
   wx_server_url     smallcat 取码面板地址，默认 http://49.232.164.167:8787
-  wx_auth           smallcat 面板 auth 头，默认 
+  wx_auth           smallcat 面板 auth 头，默认留空（需在青龙配 wx_auth）
   PLUSPLUS_TOKEN    PushPlus token，可选
   PROXY_API         品赞代理提取 API，可选
   PROXY_TYPE        http / socks5，默认 http

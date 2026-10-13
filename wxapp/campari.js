@@ -199,13 +199,22 @@ class Task {
 
     async doSign() {
         try {
-            const info = await this.getSignInfo();
-            const text = rewardText(info.pointFlowList);
+            let info = await this.getSignInfo();
+            let text = rewardText(info.pointFlowList);
             if (info.todaySignInFlag) {
                 $.log(`账号[${this.index}] 今日已签到${text ? `，${text}` : ""}`);
                 return;
             }
-            $.log(`账号[${this.index}] 签到完成${text ? `，${text}` : ""}`);
+            // 真正的签到写接口：changePoint type=4（对应小程序 useChangePoint(4)）
+            const signRes = await this.request("/cgs-api/wxApi/point/changePoint", { type: 4 });
+            $.log(`账号[${this.index}] changePoint返回: ${JSON.stringify(signRes.data || signRes)}`);
+            info = await this.getSignInfo();
+            text = rewardText(info.pointFlowList);
+            if (info.todaySignInFlag) {
+                $.log(`账号[${this.index}] 签到成功${text ? `，${text}` : ""}`);
+            } else {
+                $.log(`账号[${this.index}] 签到调用完成，但状态未翻转，请检查: ${JSON.stringify(info)}`);
+            }
         } catch (e) {
             const message = e.message || e;
             $.log(`账号[${this.index}] 签到失败: ${message}`);

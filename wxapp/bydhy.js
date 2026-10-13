@@ -143,7 +143,11 @@ class Task {
         this.sessionId = res.session_id || (res.data || {}).session_id || "";
         if (!this.sessionId) throw new Error(`登录未获得 session_id: ${short(res)}`);
         const cache = readCache();
-        cache[this.account.openid] = { sessionId: this.sessionId, updatedAt: new Date().toISOString() };
+        cache[this.account.openid] = {
+            sessionId: this.sessionId,
+            expiredTimestamp: Number((res.data || {}).expired_timestamp) || 0,
+            updatedAt: new Date().toISOString(),
+        };
         writeCache(cache);
         this.log("登录成功");
     }
@@ -151,11 +155,15 @@ class Task {
         const res = await this.post(SIGN_URL, { date: "", belong_brand: "hy", session_id: this.sessionId, app_version: "460", app_client: "mina" });
         const ret = Number(res?.ret);
         const msg = res?.msg || res?.message || "";
-        if (ret === 0) {
-            const d = res.data || {};
-            return this.log(`✅ 签到成功${d.integral !== undefined ? `，积分 ${d.integral}` : ""}${d.continuous !== undefined ? `，连续 ${d.continuous} 天` : ""}${msg ? `（${msg}）` : ""}`);
+        const d = res?.data || {};
+        // 接口成功码是 ret===200（历史脚本写成 0 导致误报失败，实际服务端已签上）
+        if (ret === 200 || ret === 0) {
+            if (d.duplicate === true || String(d.duplicate) === "true") {
+                return this.log(`✅ 今日已签到，连续 ${d.durationDays ?? 0} 天${d.integral !== undefined ? `，积分 ${d.integral}` : ""}`);
+            }
+            return this.log(`✅ 签到成功${d.integral !== undefined ? `，积分 +${d.integral}` : ""}${d.durationDays !== undefined ? `，连续 ${d.durationDays} 天` : ""}${msg ? `（${msg}）` : ""}`);
         }
-        if (/已签|签到过|重复|已完成/.test(msg)) return this.log(`✅ 今日已签到（${msg}）`);
+        if (/已签|签到过|重复|已完成|duplicate/.test(msg)) return this.log(`✅ 今日已签到（${msg}）`);
         if (ret === 50010) return this.log(`⚠️ 该微信号的比亚迪账号未完成升级/注册（${msg}），需先在比亚迪App里完成账号升级`);
         if (retry && /session|登录|未授权|失效|过期|token/i.test(msg)) {
             this.log("会话失效，重新登录后重试");
@@ -167,7 +175,15 @@ class Task {
     }
     async ensureLogin() {
         const cached = readCache()[this.account.openid] || {};
-        if (!this.sessionId && cached.sessionId) { this.sessionId = cached.sessionId; this.log("使用缓存session"); return; }
+        if (!this.sessionId && cached.sessionId) {
+            // 会话有 expired_timestamp（秒），过期则重新登录，避免拿死 session 直接签到
+            const expired = Number(cached.expiredTimestamp) || 0;
+            if (expired && expired * 1000 > Date.now()) {
+                this.sessionId = cached.sessionId;
+                this.log("使用缓存session");
+                return;
+            }
+        }
         if (!this.sessionId) await this.login();
     }
     async run() {

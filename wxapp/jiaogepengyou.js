@@ -7,7 +7,7 @@
  * 环境变量：
  * - JGPY_OPENIDS  必填；账号 openid 列表，逗号分隔
  * - wx_server_url smallcat 取码面板地址，默认 http://49.232.164.167:8787
- * - wx_auth       smallcat 面板 auth 头，默认留空（需在青龙配 wx_auth）
+ * - wx_auth       smallcat 面板 auth 头，默认 a4c8e5a89dd7ac493e2cf25243286b5e
  * - JGPY_NOTIFY   可选；默认1，设为0关闭青龙通知
  *
  * 业务接口：smp-api.iyouke.com/dtapi
@@ -26,7 +26,7 @@ const APP_VERSION = '2.19.1';
 const PAGE_VERSION = '91';
 const API_BASE = 'https://smp-api.iyouke.com/dtapi';
 const WX_SERVER_URL = (process.env.wx_server_url || 'http://49.232.164.167:8787').replace(/\/+$/, '');
-const WX_AUTH = process.env.wx_auth || '';
+const WX_AUTH = process.env.wx_auth || 'a4c8e5a89dd7ac493e2cf25243286b5e';
 const NOTIFY_ENABLED = (process.env.JGPY_NOTIFY || '1') !== '0';
 const fetchFn = globalThis.fetch || ((...args) => import('node-fetch').then(({ default: f }) => f(...args)));
 

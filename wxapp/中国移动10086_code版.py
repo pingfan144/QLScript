@@ -88,7 +88,7 @@ ACTIVITY_ID = (os.getenv("YD_ACTIVITY_ID", "") or "1021122301").strip() or "1021
 
 # smallcat 取码配置
 WX_SERVER_URL = os.getenv("wx_server_url", "http://49.232.164.167:8787").rstrip("/")
-WX_AUTH = os.getenv("wx_auth", "")
+WX_AUTH = os.getenv("wx_auth", "a4c8e5a89dd7ac493e2cf25243286b5e")
 OPENIDS = [o.strip() for o in os.getenv("YD10086_OPENIDS", "").replace("，", ",").split(",") if o.strip()]
 
 # 10086+ 小程序内 newdirect 统一入口（GET）

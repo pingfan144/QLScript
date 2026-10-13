@@ -46,6 +46,7 @@ class WeChatCodeServer {
                     return res;
                 }
                 console.log('获取code未返回有效值，触发续期后重试: ' + JSON.stringify(d).slice(0, 160));
+                await this.rebuildSession(openid).catch(() => {});
                 await this.refreshAccount(openid).catch(() => {});
             } catch (err) {
                 console.log('获取code异常: ' + (err.message || err));
@@ -210,6 +211,17 @@ class WeChatCodeServer {
             const srvMsg = err.response && err.response.data && (err.response.data.msg || err.response.data.message);
             throw new Error(`YYB获取手机号失败: ${srvMsg || err.message || err}`);
         }
+    }
+
+    /* ── 重建运行时 session（等价 wx_server /wx/getsession）──
+       smallcat 的 js-login 偶发「session 未就绪」导致 /wx/code 返回空（如 js-login code was not returned），
+       只 /wx/refresh 续期救不回来；这里先重建小程序运行时 session 再续期，成功率更高。 */
+    async rebuildSession(openid) {
+        if (this.yybMode) return null;
+        return axios.post(this.serverUrl + '/wx/getsession', { appid: this.appid, openid }, {
+            headers: { 'auth': this.auth },
+            timeout: 30 * 1000,
+        });
     }
 
     /* ── 刷新账号（等价 wx_server /wx/refresh，camel 等脚本取码失败后的补救）──

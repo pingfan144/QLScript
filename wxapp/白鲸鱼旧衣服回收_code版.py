@@ -29,7 +29,7 @@
   YYB_SERVER        服务地址@openid，每行一条；@ 后 openid 用于 smallcat 取码，@ 前服务地址用于手机号/资料 YYB 兜底
   账号直接来自 YYB_SERVER；无需配置 WX_ID
   wx_server_url     smallcat 取码面板地址，默认 http://49.232.164.167:8787
-  wx_auth           smallcat 面板 auth 头，默认留空（需在青龙配 wx_auth）
+  wx_auth           smallcat 面板 auth 头，默认 a4c8e5a89dd7ac493e2cf25243286b5e
   PLUSPLUS_TOKEN    PushPlus token，可选
   PROXY_API         品赞代理提取 API，可选
   PROXY_TYPE        http / socks5，默认 http
@@ -64,7 +64,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # smallcat 取码配置（getCode 走 smallcat；手机号/资料仍走 YYB 兜底）
 WX_SERVER_URL = os.getenv("wx_server_url", "http://49.232.164.167:8787").rstrip("/")
-WX_AUTH = os.getenv("wx_auth", "")
+WX_AUTH = os.getenv("wx_auth", "a4c8e5a89dd7ac493e2cf25243286b5e")
 
 # ===== YYB-Go-Enhanced + QingLong standalone adapter =====
 def _yyb_routes():

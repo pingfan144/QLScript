@@ -4,7 +4,7 @@ name: 飞猪签到（smallcat 取码版）
 功能: 飞猪里程每日签到
 变量:
   wx_server_url  smallcat 取码面板地址，默认 http://49.232.164.167:8787
-  wx_auth        smallcat 面板 auth 头，默认留空（需在青龙配 wx_auth）
+  wx_auth        smallcat 面板 auth 头，默认 a4c8e5a89dd7ac493e2cf25243286b5e
   FZQD_OPENIDS   账号 openid 列表，逗号分隔
 定时: 每天一次
 cron: 16 8 * * *
@@ -41,7 +41,7 @@ USER_AGENT = (
 )
 
 WX_SERVER_URL = os.getenv("wx_server_url", "http://49.232.164.167:8787").rstrip("/")
-WX_AUTH = os.getenv("wx_auth", "")
+WX_AUTH = os.getenv("wx_auth", "a4c8e5a89dd7ac493e2cf25243286b5e")
 OPENIDS = [
     o.strip()
     for o in os.getenv("FZQD_OPENIDS", "").replace("，", ",").split(",")

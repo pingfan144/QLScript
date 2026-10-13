@@ -20,7 +20,7 @@
 
 依赖环境变量（青龙面板内配置）：
   wx_server_url    smallcat wx_server 地址   默认 http://49.232.164.167:8787
-  wx_auth          smallcat auth 值         默认留空（需在青龙配 wx_auth）
+  wx_auth          smallcat auth 值         默认 a4c8e5a89dd7ac493e2cf25243286b5e
   hsy_openid       回收猿 openid，多个用 & 或 , 或换行分隔
   hsy_cache_file   缓存文件路径（可选）
 """
@@ -45,7 +45,7 @@ CODE_CACHE_TTL = 300                       # code 缓存有效期（秒）
 
 # ---------------- 环境变量 ----------------
 WX_SERVER_URL = os.environ.get("wx_server_url", "http://49.232.164.167:8787").rstrip("/")
-WX_AUTH = os.environ.get("wx_auth", "")
+WX_AUTH = os.environ.get("wx_auth", "a4c8e5a89dd7ac493e2cf25243286b5e")
 HSY_OPENID_ENV = os.environ.get("hsy_openid", "")
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

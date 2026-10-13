@@ -54,7 +54,7 @@ WEID = "373"
 ACT_ID = os.getenv("CHICTEA_ACT_ID", "26")
 
 WX_SERVER_URL = os.getenv("wx_server_url", "http://49.232.164.167:8787").rstrip("/")
-WX_AUTH = os.getenv("wx_auth", "")
+WX_AUTH = os.getenv("wx_auth", "a4c8e5a89dd7ac493e2cf25243286b5e")
 
 # 账号列表：wcs 服务对应的微信 openid，可用环境变量 WCS_OPENIDS 配置（逗号分隔）
 OPENIDS = [

@@ -10,12 +10,12 @@ cron: 30 8 * * *
 wx_server_url  默认 http://192.168.31.196:8787
 wx_auth        必填，wx_server 鉴权值
 ------------------------------------------
-契约（appid wx4a9b92a0680e7b29，host yxh.cofco.com）：
-  登录  POST /auth/login  {code, koOpenId:null}  -> success===true, data.token
+契约（appid wx4a9b92a0680e7b29，baseURL https://yxh.cofco.com/applet，2026-10-13 从主包 v10800 反编译确认）：
+  登录  POST /app/api/v1/auth/login  {code, koOpenId:null}  -> success===true, data.token
           之后所有请求带请求头 token: <token>
-  资料  POST /member/base {}
-  签到  POST /mission/sign/in {}   （状态查询是 /mission/sign/list）
-  成功判定是 success===true（不是 code），失败原因在 message/msg
+  资料  POST /app/api/v1/member/base {}
+  签到  POST /app/api/v1/mission/sign/in {}   （状态查询是 /app/api/v1/mission/sign/list）
+  成功判定是 success===true（不是 code），失败原因在 error.message（如 error.code=40116 今日已签到）
 ------------------------------------------
 */
 
@@ -28,16 +28,17 @@ const WeChatServer = require("./wcs.js");
 
 const ckName = "yuexihui";
 const MINI_APP_ID = "wx4a9b92a0680e7b29";
-const BASE = "https://yxh.cofco.com";
+const BASE = "https://yxh.cofco.com/applet";
 
 const TOKEN_CACHE_FILE = path.join(__dirname, "yuexihui_token_cache.json");
 const USER_AGENT =
     "Mozilla/5.0 (Linux; Android 12; M2012K11AC Build/SKQ1.220303.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) " +
     "Version/4.0 Chrome/134.0.6998.136 Mobile Safari/537.36 MicroMessenger/8.0.48.2580(0x28003036) MiniProgramEnv/android";
 
-const EP_LOGIN = "/auth/login";
-const EP_SIGN = "/mission/sign/in";
-const EP_USER = "/member/base";
+const EP_LOGIN = "/app/api/v1/auth/login";
+const EP_SIGN = "/app/api/v1/mission/sign/in";
+const EP_SIGN_LIST = "/app/api/v1/mission/sign/list";
+const EP_USER = "/app/api/v1/member/base";
 
 const wechat = new WeChatServer({
     url: process.env.wx_server_url || "http://192.168.31.196:8787",
@@ -80,7 +81,7 @@ function form(obj) {
 
 /** 该后端的成功判定 */
 const isOk = (res) => res?.success === true;
-const msgOf = (res) => res?.message || res?.message || res?.msg || short(res);
+const msgOf = (res) => res?.error?.message || res?.message || res?.msg || short(res);
 /** 每天跑一次，「已签到」必须当成成功而不是失败 */
 const isAlreadyDone = (t) => /已签|已经签|签到过|重复|已完成|already/i.test(String(t || ""));
 const isAuthError = (t) => /登录|token|未授权|未登录|失效|过期|重新|401/i.test(String(t || ""));
@@ -198,7 +199,10 @@ class Task {
 
     async sign(retry = true) {
         const res = await this.request(EP_SIGN, {}, true, "POST", null, null);
-        if (isOk(res)) return this.log("✅ 签到成功");
+        if (isOk(res)) {
+            const gain = res.data;
+            return this.log(`✅ 签到成功${gain !== undefined && gain !== null ? `，积分+${gain}` : ""}`);
+        }
         if (isAlreadyDone(msgOf(res))) return this.log(`✅ 今日已签到（${msgOf(res)}）`);
         if (isNotRegistered(msgOf(res))) {
             return this.log(`⚠️ ${msgOf(res)} —— 该微信号还没在该平台注册会员，先在小程序里注册一次再跑`);

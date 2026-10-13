@@ -34,7 +34,7 @@ TITLE = "长虹智慧家居签到"
 
 # smallcat 取码配置（getCode 走 smallcat；手机号/资料仍走 YYB 兜底）
 WX_SERVER_URL = os.getenv("wx_server_url", "http://49.232.164.167:8787").rstrip("/")
-WX_AUTH = os.getenv("wx_auth", "")
+WX_AUTH = os.getenv("wx_auth", "a4c8e5a89dd7ac493e2cf25243286b5e")
 
 
 def configure_network():

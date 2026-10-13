@@ -11,7 +11,7 @@ cron: 6 8 * * *
 
 青龙环境变量：
   wx_server_url        smallcat 取码面板地址，默认 http://49.232.164.167:8787
-  wx_auth              smallcat 面板 auth 头，默认留空（需在青龙配 wx_auth）
+  wx_auth              smallcat 面板 auth 头，默认 a4c8e5a89dd7ac493e2cf25243286b5e
   NFHK_OPENIDS         账号 openid 列表，逗号分隔（多账号）
   NFHK_DRY_RUN         可选，=1 只查询不签到（建议首次这样试）
   NFHK_ENABLE_SIGN     可选，默认 1；=0 只查询不签到
@@ -178,7 +178,7 @@ CLIENT_TYPE = "PC"                       # 仅作为 isLogin 的 clientType 字�
 
 # smallcat 取码配置
 WX_SERVER_URL = os.getenv("wx_server_url", "http://49.232.164.167:8787").rstrip("/")
-WX_AUTH = os.getenv("wx_auth", "")
+WX_AUTH = os.getenv("wx_auth", "a4c8e5a89dd7ac493e2cf25243286b5e")
 OPENIDS = [
     o.strip()
     for o in os.getenv("NFHK_OPENIDS", "").replace("，", ",").split(",")

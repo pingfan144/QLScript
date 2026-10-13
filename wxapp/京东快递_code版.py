@@ -8,7 +8,7 @@ cron: 17 8 * * *
   YYB_SERVER  服务地址@openid，多账号每行一条；@ 后 openid 用于 smallcat 取码，@ 前服务地址用于手机号/资料 YYB 兜底
               例：yyb-go:8000@openid
   wx_server_url  smallcat 取码面板地址，默认 http://49.232.164.167:8787
-  wx_auth        smallcat 面板 auth 头，默认留空（需在青龙配 wx_auth）
+  wx_auth        smallcat 面板 auth 头，默认 a4c8e5a89dd7ac493e2cf25243286b5e
   JDEXPRESS_NOTIFY  1 推送（默认），0 关闭推送
   JDEXPRESS_ACCOUNT_LIMIT  可选，仅运行前 N 个账号（用于测试）
   JDEXPRESS_REF_FILTER  可选，仅运行指定账号标识（用于测试）
@@ -50,7 +50,7 @@ TIMEOUT = 20
 
 # smallcat 取码配置（getCode 走 smallcat；手机号/资料仍走 YYB 兜底）
 WX_SERVER_URL = os.getenv("wx_server_url", "http://49.232.164.167:8787").rstrip("/")
-WX_AUTH = os.getenv("wx_auth", "")
+WX_AUTH = os.getenv("wx_auth", "a4c8e5a89dd7ac493e2cf25243286b5e")
 UA = (
     "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) "
     "AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 "

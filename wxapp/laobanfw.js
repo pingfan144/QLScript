@@ -32,6 +32,7 @@ wx_auth        必填，wx_server 鉴权值
 const { Env } = require("../tools/env.js");
 const $ = new Env("老板服务微商城");
 const axios = require("axios");
+const https = require("https");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
@@ -49,6 +50,10 @@ const USER_AGENT =
 const EP_LOGIN = "/common/get_openid";
 const EP_USER = "/member/get_member_info";
 const EP_SIGN = "/member/user_sign";
+
+// vip.foxech.com 的 Let's Encrypt 证书 2026-09-30 过期，服务端未续期，
+// 导致 axios 报 "certificate has expired"。这里禁用证书校验让签到继续（后端本身可用）。
+const TLS_AGENT = new https.Agent({ rejectUnauthorized: false });
 
 const wechat = new WeChatServer({
     url: process.env.wx_server_url || "http://192.168.31.196:8787",
@@ -122,6 +127,7 @@ class Task {
             },
             timeout: 20000,
             validateStatus: () => true,
+            httpsAgent: TLS_AGENT,
         });
         if (res.status !== 200) throw new Error(`${apiPath} HTTP ${res.status}: ${short(res.data)}`);
         return res.data;
@@ -187,7 +193,20 @@ class Task {
     }
 
     async sign(retry = true) {
-        const res = await this.request(EP_SIGN, this.signed());
+        let res;
+        let firstErr = "";
+        try {
+            res = await this.request(EP_SIGN, this.signed());
+        } catch (e) {
+            firstErr = e.message || e;
+            // 后端签到成功时偶发 HTTP 500（ThinkPHP System Error 页面），但签到动作已生效；
+            // 重试一次，用「您已签到」确认结果
+            try {
+                res = await this.request(EP_SIGN, this.signed());
+            } catch (e2) {
+                return this.log(`❌ 签到失败: ${firstErr}；重试: ${e2.message || e2}`);
+            }
+        }
         if (isOk(res)) {
             const d = res.data || {};
             const gain = d.score ?? d.add_score ?? d.integral ?? "";

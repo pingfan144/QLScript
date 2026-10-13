@@ -55,7 +55,7 @@
  *   环境变量：
  *     PAID_OPENIDS 必填，逗号分隔的微信 openid 列表
  *     wx_server_url smallcat 取码面板地址，默认 http://49.232.164.167:8787
- *     wx_auth       smallcat 面板 auth 头，默认留空（需在青龙配 wx_auth）
+ *     wx_auth       smallcat 面板 auth 头，默认 a4c8e5a89dd7ac493e2cf25243286b5e
  *     PAID_NOTIFY  可选，默认 1；设为 0 时关闭青龙 notify.py 汇总通知
  *     PAID_ACCOUNT_DELAY 可选，账号间固定等待秒数；默认随机 10-18 秒，测试可设为 0
  *   登录链路优先级（命中即跳过后续）：
@@ -146,7 +146,7 @@ function aesCbcEncrypt(plaintext, keyBuf, ivBuf) {
 // ============ 配置（全局通用变量无前缀；专属变量用 PAID_ 前缀） ============
 // 账号来源：PAID_OPENIDS 逗号分隔的 openid 列表，取码走 smallcat /wx/code。
 const WX_SERVER_URL = (process.env.wx_server_url || 'http://49.232.164.167:8787').replace(/\/+$/, '');
-const WX_AUTH = process.env.wx_auth || '';
+const WX_AUTH = process.env.wx_auth || 'a4c8e5a89dd7ac493e2cf25243286b5e';
 const PAID_TOKENS = (process.env.PAID_TOKENS || '').trim();        // 多行 openid|{"authToken":..,"signKey":..,"degradeToken":..,"userInfo":..}
 const PAID_DEBUG  = (process.env.PAID_DEBUG || '').trim() === '1'; // 仅 DEBUG=1 打噪声
 const BARK_PUSH   = (process.env.BARK_PUSH || '').trim();

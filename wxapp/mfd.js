@@ -92,6 +92,8 @@ class Task {
         this.phone = "";
         this.groupId = "";
         this.agentId = "";
+        this.accessToken = "";
+        this.refreshToken = "";
         this.memberInfo = {};
     }
 
@@ -100,13 +102,14 @@ class Task {
         if (cached) {
             this.applyToken(cached);
             $.log(`账号[${this.index}] 使用缓存登录态: memberId=${shortValue(this.memberId)}`);
-            if (!(await this.checkLogin())) {
-                this.removeCachedToken();
-                $.log(`账号[${this.index}] 缓存登录态失效，重新登录`);
-            }
         }
 
-        if (!this.memberId) {
+        if (!this.memberId || !this.accessToken) {
+            await this.loginByWxCode();
+            if (!this.memberId) return;
+        } else if (cached && !(await this.checkLogin())) {
+            $.log(`账号[${this.index}] 缓存登录态失效，重新登录`);
+            this.removeCachedToken();
             await this.loginByWxCode();
             if (!this.memberId) return;
         }
@@ -134,6 +137,8 @@ class Task {
             phone: this.phone,
             groupId: this.groupId,
             agentId: this.agentId,
+            accessToken: this.accessToken,
+            refreshToken: this.refreshToken,
             updatedAt: new Date().toISOString(),
         };
         writeTokenCache(cache);
@@ -151,6 +156,8 @@ class Task {
         this.phone = "";
         this.groupId = "";
         this.agentId = "";
+        this.accessToken = "";
+        this.refreshToken = "";
     }
 
     applyToken(data = {}) {
@@ -160,6 +167,8 @@ class Task {
         this.phone = data.phone || "";
         this.groupId = data.groupId || "";
         this.agentId = data.agentId || "";
+        this.accessToken = data.accessToken || "";
+        this.refreshToken = data.refreshToken || "";
     }
 
     getHeaders(extra = {}) {
@@ -175,6 +184,7 @@ class Task {
             ...extra,
         };
         if (this.memberId) headers.userId = this.memberId;
+        if (this.accessToken) headers["X-Token"] = this.accessToken;
         return headers;
     }
 
@@ -238,7 +248,10 @@ class Task {
             this.unionId = data.unionId || "";
             this.memberId = String(data.memberId || "");
             this.phone = data.phone || "";
+            this.accessToken = data.accessToken || "";
+            this.refreshToken = data.refreshToken || "";
             if (!this.memberId) throw new Error(`登录响应未返回 memberId: ${JSON.stringify(result)}`);
+            if (!this.accessToken) throw new Error(`登录响应未返回 accessToken: ${JSON.stringify(result)}`);
             this.saveCachedToken();
             $.log(`账号[${this.index}] 登录成功: memberId=${shortValue(this.memberId)} ${maskPhone(this.phone)}`);
         } catch (e) {
@@ -271,11 +284,23 @@ class Task {
             this.memberInfo = data;
             const name = data.nickName || data.nickname || data.memberName || data.name || "未知";
             const phone = data.phone || data.mobile || this.phone;
-            const point = data.availablePoint ?? data.point ?? data.points ?? data.integral ?? "未知";
+            const point = data.availablePoint ?? data.point ?? data.points ?? data.totalPoint ?? data.integral ?? "未知";
             $.log(`账号[${this.index}] 会员: ${name} ${maskPhone(phone)} 积分=${point}`);
         } catch (e) {
             $.log(`账号[${this.index}] 查询会员信息失败: ${e.message || e}`);
-            if (isTokenError(e)) this.removeCachedToken();
+            if (isTokenError(e) && !(await this.reloginIfNeeded())) {
+                this.removeCachedToken();
+            }
+        }
+    }
+
+    async reloginIfNeeded() {
+        try {
+            $.log(`账号[${this.index}] 登录态异常，重新登录...`);
+            await this.loginByWxCode();
+            return !!this.memberId;
+        } catch (e) {
+            return false;
         }
     }
 
@@ -306,9 +331,18 @@ class Task {
                 data: { memberId: this.memberId },
             });
             $.log(`账号[${this.index}] 签到成功: ${result.msg || result.message || "ok"}`);
+            this.signedToday = true;
         } catch (e) {
-            $.log(`账号[${this.index}] 签到失败: ${e.message || e}`);
-            if (isTokenError(e)) this.removeCachedToken();
+            const msg = e.message || String(e);
+            if (/已经提交|重复提交|请勿重复/.test(msg)) {
+                $.log(`账号[${this.index}] 今日已签到（${msg}）`);
+                this.signedToday = true;
+                return;
+            }
+            $.log(`账号[${this.index}] 签到失败: ${msg}`);
+            if (isTokenError(e) && !(await this.reloginIfNeeded())) {
+                this.removeCachedToken();
+            }
         }
     }
 }

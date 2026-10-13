@@ -65,7 +65,7 @@ CACHE_FILE = os.path.join(SCRIPT_DIR, "mtwm_token_cache.json")
 # 环境变量
 MTWM_TOKEN = os.getenv('MTWM_TOKEN', '').strip()
 WX_SERVER_URL = os.getenv("wx_server_url", "http://49.232.164.167:8787").rstrip("/")
-WX_AUTH = os.getenv("wx_auth", "")
+WX_AUTH = os.getenv("wx_auth", "a4c8e5a89dd7ac493e2cf25243286b5e")
 OPENIDS = [o.strip() for o in os.getenv("XDH_OPENIDS", "").replace("，", ",").split(",") if o.strip()]
 
 # 注册参数（新号首次注册时随登录请求携带，环境变量 MTWM_INVITE 可覆盖）

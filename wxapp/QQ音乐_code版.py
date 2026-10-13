@@ -11,7 +11,7 @@ QQ音乐签到 v1.2.0（smallcat 取码版）
 1. smallcat 取码账号：
    QQMUSIC_OPENIDS                                 必填，账号 openid 列表，逗号分隔
    wx_server_url                                    smallcat 取码面板地址，默认 http://49.232.164.167:8787
-   wx_auth                                          smallcat 面板 auth 头，默认留空（需在青龙配 wx_auth）
+   wx_auth                                          smallcat 面板 auth 头，默认 a4c8e5a89dd7ac493e2cf25243286b5e
 
 2. 账号变量：
    WX_ID                                            可选，账号白名单
@@ -81,7 +81,7 @@ GLOBAL_NOTIFY_BUFFERS: List[Dict[str, Any]] = []
 
 # smallcat 取码配置
 WX_SERVER_URL = os.getenv("wx_server_url", "http://49.232.164.167:8787").rstrip("/")
-WX_AUTH = os.getenv("wx_auth", "")
+WX_AUTH = os.getenv("wx_auth", "a4c8e5a89dd7ac493e2cf25243286b5e")
 OPENIDS = [
     o.strip()
     for o in os.getenv("QQMUSIC_OPENIDS", "").replace("，", ",").split(",")

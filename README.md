@@ -1,39 +1,6 @@
-## 免费AI中转站
-
-
-
-https://free.supxh.xin/register?code=BVDU5Y
-
-
-https://vsllm.com/register?aff=5Wvk
-
-
-https://tabitoken.com/sign-up?aff=c6Rg  
-
-
-https://gorouter.app/sign-up?aff=ZXsr 
-
-
-https://agentrouter.org/register?aff=s51d
-
-
-https://api2.gemai.cc/sign-up?aff=Fjsj
-
-
-https://api456.me/register?aff=yBOp
-
-
-https://api.justwoker.icu/sign-up?aff=nUng
-
-
-访问不了就用梯子
-注册不了就用第三方登录
-
-## WEB搜索就用必应；每天搜索有积分；积分换购物卡
-https://rewards.bing.com/welcome?rh=g7a-IyWIfh0&ref=rafsrchae
-## 大环境不好求职
-本人大专毕业！学习逆向5年，移动应用；PC应用；浏览器网页逆向相关！JSVMP；混淆等；可用AI工具提高开发效率！
-目标薪资10K
+拉取的这两位和自己收集AI修复的，只修wx小程序的，code使用smallfawn，其他不知道适不适配
+https://github.com/lcmovie/YYB-GO-Script-i
+https://github.com/smallfawn/QLScriptPublic
 ### 脚本功能列表
 <!-- README_TABLE_START -->
 | 脚本名称 | 最后一次更新时间 | 当前状态 |
@@ -266,9 +233,6 @@ https://rewards.bing.com/welcome?rh=g7a-IyWIfh0&ref=rafsrchae
 | 微盟会员签到 | 2026-08-20 10:19:33 | ✅ |
 | 拼多多果园公众号版 | 2026-09-02 19:39:02 | ✅ |
 <!-- WXAPP_TABLE_END -->
-# 青龙面板拉库命令
-
-`ql repo https://github.com/smallfawn/QLScriptPublic.git`
 
 ## 免责声明
 
@@ -285,13 +249,4 @@ smallfawn 对任何脚本问题概不负责，包括但不限于由任何脚本�
 任何以任何方式查看此项目的人或直接或间接使用该Script项目的任何脚本的使用者都应仔细阅读此声明。 smallfawn 保留随时更改或补充此免责声明的权利。一旦使用并复制了任何相关脚本或Script项目的规则，则视为您已接受此免责声明.
 
 您必须在下载后的24小时内从计算机或手机中完全删除以上内容.严禁产生利益链！
-
-## Star History
-
-<a href="https://star-history.dera.page/#smallfawn/QLScriptPublic&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=smallfawn/QLScriptPublic&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=smallfawn/QLScriptPublic&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=smallfawn/QLScriptPublic&type=date&legend=top-left" />
- </picture>
-</a>
+、
